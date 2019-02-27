@@ -167,11 +167,12 @@ process MapReads {
   readGroup = "@RG\\tID:${idRun}\\t${CN}PU:${idRun}\\tSM:${idSample}\\tLB:${idSample}\\tPL:illumina"
   // adjust mismatch penalty for tumor samples
   extra = status == 1 ? "-B 3" : ""
+  mem_per_cpu = task.memory.toGiga().intdiv(task.cpus) - 1
   if (SarekUtils.hasExtension(inputFile1,"fastq.gz"))
     """
     bwa mem -R \"${readGroup}\" ${extra} -t ${task.cpus} -M \
     ${genomeFile} ${inputFile1} ${inputFile2} | \
-    samtools sort --threads ${task.cpus} -m 2G - > ${idRun}.bam
+    samtools sort --threads ${task.cpus} -m ${mem_per_cpu}G - > ${idRun}.bam
     """
   else if (SarekUtils.hasExtension(inputFile1,"bam"))
   // -K is an hidden option, used to fix the number of reads processed by bwa mem
@@ -190,7 +191,7 @@ process MapReads {
     bwa mem -K 100000000 -p -R \"${readGroup}\" ${extra} -t ${task.cpus} -M ${genomeFile} \
     /dev/stdin - 2> >(tee ${inputFile1}.bwa.stderr.log >&2) \
     | \
-    samtools sort --threads ${task.cpus} -m 2G - > ${idRun}.bam
+    samtools sort --threads ${task.cpus} -m ${mem_per_cpu}G - > ${idRun}.bam
     """
 }
 
