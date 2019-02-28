@@ -184,7 +184,7 @@ process BuildReferenceIndex {
 
   script:
   """
-  gatk --java-options "-Xmx${task.memory.toGiga()}g" \
+  gatk --java-options "-Xmx${task.memory.toGiga() * mem_unit_adj}g" \
   CreateSequenceDictionary \
   --REFERENCE ${f_reference} \
   --OUTPUT ${f_reference.baseName}.dict

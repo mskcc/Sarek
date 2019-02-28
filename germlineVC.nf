@@ -256,7 +256,7 @@ process RunHaplotypecaller {
 
   script:
   """
-  gatk --java-options "-Xmx${task.memory.toGiga()}g -Xms6000m -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+  gatk --java-options "-Xmx${task.memory.toGiga() * mem_unit_adj}g -Xms6000m -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
       HaplotypeCaller \
       -R ${genomeFile} \
       -I ${bam} \
@@ -293,7 +293,7 @@ process RunGenotypeGVCFs {
   """
   gatk IndexFeatureFile -F ${gvcf}
 
-  gatk --java-options -Xmx${task.memory.toGiga()}g \
+  gatk --java-options -Xmx${task.memory.toGiga() * mem_unit_adj}g \
   GenotypeGVCFs \
   -R ${genomeFile} \
   -L ${intervalBed} \

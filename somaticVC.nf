@@ -218,7 +218,7 @@ process RunMutect2 {
 
   script:
   """
-  gatk --java-options "-Xmx${task.memory.toGiga()}g" \
+  gatk --java-options "-Xmx${task.memory.toGiga() * mem_unit_adj}g" \
     Mutect2 \
     -R ${genomeFile}\
     -I ${bamTumor}  -tumor ${idSampleTumor} \

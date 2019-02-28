@@ -166,7 +166,7 @@ process RunSnpeff {
   script:
   cache = (params.snpEff_cache && params.annotation_cache) ? "-dataDir \${PWD}/${dataDir}" : ""
   """
-  snpEff -Xmx${task.memory.toGiga()}g \
+  snpEff -Xmx${task.memory.toGiga() * mem_unit_adj}g \
   ${snpeffDb} \
   -csvStats ${vcf.simpleName}_snpEff.csv \
   -nodownload \

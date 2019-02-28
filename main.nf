@@ -167,7 +167,7 @@ process MapReads {
   readGroup = "@RG\\tID:${idRun}\\t${CN}PU:${idRun}\\tSM:${idSample}\\tLB:${idSample}\\tPL:illumina"
   // adjust mismatch penalty for tumor samples
   extra = status == 1 ? "-B 3" : ""
-  mem_per_cpu = task.memory.toGiga().intdiv(task.cpus) - 1
+  mem_per_cpu = task.memory.toGiga().intdiv(task.cpus + 1) * mem_unit_adj
   if (SarekUtils.hasExtension(inputFile1,"fastq.gz"))
     """
     bwa mem -R \"${readGroup}\" ${extra} -t ${task.cpus} -M \
@@ -181,7 +181,7 @@ process MapReads {
   // cf https://github.com/CCDG/Pipeline-Standardization/blob/master/PipelineStandard.md
   // and https://github.com/gatk-workflows/gatk4-data-processing/blob/8ffa26ff4580df4ac3a5aa9e272a4ff6bab44ba2/processing-for-variant-discovery-gatk4.b37.wgs.inputs.json#L29
     """
-    gatk --java-options -Xmx${task.memory.toGiga()}g \
+    gatk --java-options -Xmx${task.memory.toGiga() * mem_unit_adj}g \
     SamToFastq \
     --INPUT=${inputFile1} \
     --FASTQ=/dev/stdout \
@@ -216,7 +216,7 @@ process RunBamQCmapped {
 
   script:
   """
-  qualimap --java-mem-size=${task.memory.toGiga()}G \
+  qualimap --java-mem-size=${task.memory.toGiga() * mem_unit_adj}G \
   bamqc \
   -bam ${bam} \
   --paint-chromosome-limits \
@@ -367,7 +367,7 @@ process CreateRecalibrationTable {
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
   """
-  gatk --java-options -Xmx${task.memory.toGiga()}g \
+  gatk --java-options -Xmx${task.memory.toGiga() * mem_unit_adj}g \
   BaseRecalibrator \
   --input ${bam} \
   --output ${idSample}.recal.table \
@@ -420,7 +420,7 @@ process RecalibrateBam {
 
   script:
   """
-  gatk --java-options -Xmx${task.memory.toGiga()}g \
+  gatk --java-options -Xmx${task.memory.toGiga() * mem_unit_adj}g \
   ApplyBQSR \
   -R ${genomeFile} \
   --input ${bam} \
@@ -484,7 +484,7 @@ process RunBamQCrecalibrated {
 
   script:
   """
-  qualimap --java-mem-size=${task.memory.toGiga()}G \
+  qualimap --java-mem-size=${task.memory.toGiga() * mem_unit_adj}G \
   bamqc \
   -bam ${bam} \
   --paint-chromosome-limits \
