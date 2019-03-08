@@ -10,3 +10,4 @@ work/
 .nextflow*
 *.img
 *.tar.gz
+nf.*
