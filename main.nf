@@ -173,8 +173,7 @@ process MapReads {
   if (SarekUtils.hasExtension(inputFile1,"fastq.gz"))
     """
     bwa mem -R \"${readGroup}\" ${extra} -t ${task.cpus} -M ${genomeFile} ${inputFile1} ${inputFile2} | \
-    sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${mem_setting}G -o ${idRun}.bam /dev/stdin
-#    samtools sort --threads ${task.cpus} -m ${mem_per_cpu}G - > ${idRun}.bam
+    samblaster --addMateTags --maxSplitCount 2 --minNonOverlap 20 | sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${mem_setting}G -o ${idRun}.bam /dev/stdin
     """
   else if (SarekUtils.hasExtension(inputFile1,"bam"))
   // -K is an hidden option, used to fix the number of reads processed by bwa mem
@@ -193,8 +192,7 @@ process MapReads {
     bwa mem -K 100000000 -p -R \"${readGroup}\" ${extra} -t ${task.cpus} -M ${genomeFile} \
     /dev/stdin - 2> >(tee ${inputFile1}.bwa.stderr.log >&2) \
     | \
-    sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${mem_setting}G -o ${idRun}.bam /dev/stdin
-#    samtools sort --threads ${task.cpus} -m ${mem_per_cpu}G - > ${idRun}.bam
+    samblaster --addMateTags --maxSplitCount 2 --minNonOverlap 20 | sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${mem_setting}G -o ${idRun}.bam /dev/stdin
     """
 }
 
@@ -264,7 +262,7 @@ process MergeBams {
   script:
   mem_setting = mem_unit_adj(task.memory)
   """
-  sambamba merge -t ${task.cpus} -l 0 ${idSample}.bam ${bam}
+ sambamba merge -t ${task.cpus} -l 0 ${idSample}.bam ${bam}
   """
 //  samtools merge --threads ${task.cpus} ${idSample}.bam ${bam}
 }
@@ -304,22 +302,24 @@ process MarkDuplicates {
   output:
     set idPatient, file("${idSample}_${status}.md.bam"), file("${idSample}_${status}.md.bai") into duplicateMarkedBams
     set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai") into markDuplicatesTSV
-    file ("${idSample}.bam.metrics") into markDuplicatesReport
+//    file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   when: step == 'mapping' && !params.onlyQC
 
   script:
   mem_setting = mem_unit_adj(task.memory)
   """
-  gatk --java-options ${params.markdup_java_options} \
-  MarkDuplicates \
-  --MAX_RECORDS_IN_RAM 50000 \
-  --INPUT ${idSample}.bam \
-  --METRICS_FILE ${idSample}.bam.metrics \
-  --TMP_DIR . \
-  --ASSUME_SORT_ORDER coordinate \
-  --CREATE_INDEX true \
-  --OUTPUT ${idSample}_${status}.md.bam
+   cp ${idSample}.bam ${idSample}_${status}.md.bam
+   sambamba index ${idSample}_${status}.md.bam ${idSample}_${status}.md.bai
+#  gatk --java-options ${params.markdup_java_options} \
+#  MarkDuplicates \
+#  --MAX_RECORDS_IN_RAM 50000 \
+#  --INPUT ${idSample}.bam \
+#  --METRICS_FILE ${idSample}.bam.metrics \
+#  --TMP_DIR . \
+#  --ASSUME_SORT_ORDER coordinate \
+#  --CREATE_INDEX true \
+#  --OUTPUT ${idSample}_${status}.md.bam
   """
 }
 
