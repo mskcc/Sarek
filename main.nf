@@ -262,7 +262,7 @@ process MergeBams {
   script:
   mem_setting = mem_unit_adj(task.memory)
   """
- sambamba merge -t ${task.cpus} -l 0 ${idSample}.bam ${bam}
+  sambamba merge -t ${task.cpus} -l 0 ${idSample}.bam ${bam}
   """
 //  samtools merge --threads ${task.cpus} ${idSample}.bam ${bam}
 }
