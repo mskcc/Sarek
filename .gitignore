@@ -11,3 +11,6 @@ work/
 *.img
 *.tar.gz
 nf.*
+*.out
+*.err
+*.txt

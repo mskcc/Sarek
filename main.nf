@@ -168,12 +168,11 @@ process MapReads {
   readGroup = "@RG\\tID:${idRun}\\t${CN}PU:${idRun}\\tSM:${idSample}\\tLB:${idSample}\\tPL:illumina"
   // adjust mismatch penalty for tumor samples
   extra = status == 1 ? "-B 3" : ""
-  mem_setting = mem_unit_adj(task.memory)
-  mem_per_cpu = mem_setting.intdiv(task.cpus) - 1
+  mem_per_cpu = task.memory.toString().split(" ")[0].intdiv(task.cpus) - 1
   if (SarekUtils.hasExtension(inputFile1,"fastq.gz"))
     """
     bwa mem -R \"${readGroup}\" ${extra} -t ${task.cpus} -M ${genomeFile} ${inputFile1} ${inputFile2} | \
-    samblaster --addMateTags --maxSplitCount 2 --minNonOverlap 20 | sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${mem_setting}G -o ${idRun}.bam /dev/stdin
+    samblaster --addMateTags --maxSplitCount 2 --minNonOverlap 20 | sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${task.memory.toString().split(" ")[0]}G -o ${idRun}.bam /dev/stdin
     """
   else if (SarekUtils.hasExtension(inputFile1,"bam"))
   // -K is an hidden option, used to fix the number of reads processed by bwa mem
@@ -182,7 +181,7 @@ process MapReads {
   // cf https://github.com/CCDG/Pipeline-Standardization/blob/master/PipelineStandard.md
   // and https://github.com/gatk-workflows/gatk4-data-processing/blob/8ffa26ff4580df4ac3a5aa9e272a4ff6bab44ba2/processing-for-variant-discovery-gatk4.b37.wgs.inputs.json#L29
     """
-    gatk --java-options -Xmx${mem_setting}g \
+    gatk --java-options -Xmx${task.memory.toString().split(" ")[0]}g \
     SamToFastq \
     --INPUT=${inputFile1} \
     --FASTQ=/dev/stdout \
@@ -192,7 +191,7 @@ process MapReads {
     bwa mem -K 100000000 -p -R \"${readGroup}\" ${extra} -t ${task.cpus} -M ${genomeFile} \
     /dev/stdin - 2> >(tee ${inputFile1}.bwa.stderr.log >&2) \
     | \
-    samblaster --addMateTags --maxSplitCount 2 --minNonOverlap 20 | sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${mem_setting}G -o ${idRun}.bam /dev/stdin
+    samblaster --addMateTags --maxSplitCount 2 --minNonOverlap 20 | sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${task.memory.toString().split(" ")[0]}G -o ${idRun}.bam /dev/stdin
     """
 }
 
@@ -216,9 +215,8 @@ process RunBamQCmapped {
   when: !params.noReports && !params.noBAMQC
 
   script:
-  mem_setting = mem_unit_adj(task.memory)
   """
-  qualimap --java-mem-size=${mem_setting}G \
+  qualimap --java-mem-size=${task.memory.toString().split(" ")[0]}G \
   bamqc \
   -bam ${bam} \
   --paint-chromosome-limits \
@@ -260,7 +258,6 @@ process MergeBams {
   when: step == 'mapping' && !params.onlyQC
 
   script:
-  mem_setting = mem_unit_adj(task.memory)
   """
   sambamba merge -t ${task.cpus} -l 0 ${idSample}.bam ${bam}
   """
@@ -307,11 +304,10 @@ process MarkDuplicates {
   when: step == 'mapping' && !params.onlyQC
 
   script:
-  mem_setting = mem_unit_adj(task.memory)
   """
    cp ${idSample}.bam ${idSample}_${status}.md.bam
    sambamba index ${idSample}_${status}.md.bam ${idSample}_${status}.md.bai
-#  gatk --java-options ${params.markdup_java_options} \
+#  gatk --java-options "${params.markdup_java_options} -Xmx ${task.memory.toString().split(" ")[0]}G" \
 #  MarkDuplicates \
 #  --MAX_RECORDS_IN_RAM 50000 \
 #  --INPUT ${idSample}.bam \
@@ -372,10 +368,9 @@ process CreateRecalibrationTable {
   when: step == 'mapping' && !params.onlyQC
 
   script:
-  mem_setting = mem_unit_adj(task.memory)
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
   """
-  gatk --java-options -Xmx${mem_setting}g \
+  gatk --java-options -Xmx${task.memory.toString().split(" ")[0]}g \
   BaseRecalibrator \
   --input ${bam} \
   --output ${idSample}.recal.table \
@@ -427,9 +422,8 @@ process RecalibrateBam {
   when: !params.onlyQC
 
   script:
-  mem_setting = mem_unit_adj(task.memory)
   """
-  gatk --java-options -Xmx${mem_setting}g \
+  gatk --java-options -Xmx${task.memory.toString().split(" ")[0]}g \
   ApplyBQSR \
   -R ${genomeFile} \
   --input ${bam} \
@@ -471,7 +465,6 @@ process RunSamtoolsStats {
   when: !params.noReports
 
   script: QC.samtoolsStats(bam)
-  mem_setting = mem_unit_adj(task.memory)
 }
 
 if (params.verbose) samtoolsStatsReport = samtoolsStatsReport.view {
@@ -493,9 +486,8 @@ process RunBamQCrecalibrated {
   when: !params.noReports && !params.noBAMQC
 
   script:
-  mem_setting = mem_unit_adj(task.memory)
   """
-  qualimap --java-mem-size=${mem_setting}G \
+  qualimap --java-mem-size=${task.memory.toString().split(" ")[0]}G \
   bamqc \
   -bam ${bam} \
   --paint-chromosome-limits \
@@ -781,7 +773,3 @@ workflow.onError {
   log.info "  " + workflow.errorMessage
 }
 
-def mem_unit_adj(mem) {
-  if (workflow.profile == 'juno') return mem.toMega()
-  else return mem.toGiga()
-}
