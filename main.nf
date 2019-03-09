@@ -168,11 +168,11 @@ process MapReads {
   readGroup = "@RG\\tID:${idRun}\\t${CN}PU:${idRun}\\tSM:${idSample}\\tLB:${idSample}\\tPL:illumina"
   // adjust mismatch penalty for tumor samples
   extra = status == 1 ? "-B 3" : ""
-  mem_per_cpu = task.memory.toString().split(" ")[0].intdiv(task.cpus) - 1
+  mem_per_cpu = task.memory.toString().split(" ")[0].toInteger().intdiv(task.cpus) - 1
   if (SarekUtils.hasExtension(inputFile1,"fastq.gz"))
     """
     bwa mem -R \"${readGroup}\" ${extra} -t ${task.cpus} -M ${genomeFile} ${inputFile1} ${inputFile2} | \
-    sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${task.memory.toString().split(" ")[0]}G -o ${idRun}.bam /dev/stdin
+    sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${task.memory.toString().split(" ")[0].toInteger()}G -o ${idRun}.bam /dev/stdin
 #    samtools sort --threads ${task.cpus} -m ${mem_per_cpu}G - > ${idRun}.bam
     """
   else if (SarekUtils.hasExtension(inputFile1,"bam"))
@@ -182,7 +182,7 @@ process MapReads {
   // cf https://github.com/CCDG/Pipeline-Standardization/blob/master/PipelineStandard.md
   // and https://github.com/gatk-workflows/gatk4-data-processing/blob/8ffa26ff4580df4ac3a5aa9e272a4ff6bab44ba2/processing-for-variant-discovery-gatk4.b37.wgs.inputs.json#L29
     """
-    gatk --java-options -Xmx${task.memory.toString().split(" ")[0]}g \
+    gatk --java-options -Xmx${task.memory.toString().split(" ")[0].toInteger()}g \
     SamToFastq \
     --INPUT=${inputFile1} \
     --FASTQ=/dev/stdout \
@@ -192,7 +192,7 @@ process MapReads {
     bwa mem -K 100000000 -p -R \"${readGroup}\" ${extra} -t ${task.cpus} -M ${genomeFile} \
     /dev/stdin - 2> >(tee ${inputFile1}.bwa.stderr.log >&2) \
     | \
-    sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${task.memory.toString().split(" ")[0]}G -o ${idRun}.bam /dev/stdin
+    sambamba view -t ${task.cpus} -S -f bam -l 0 /dev/stdin | sambamba sort --tmpdir ./ -t ${task.cpus} -m ${task.memory.toString().split(" ")[0].toInteger()}G -o ${idRun}.bam /dev/stdin
 #    samtools sort --threads ${task.cpus} -m ${mem_per_cpu}G - > ${idRun}.bam
     """
 }
@@ -218,7 +218,7 @@ process RunBamQCmapped {
 
   script:
   """
-  qualimap --java-mem-size=${task.memory.toString().split(" ")[0]}G \
+  qualimap --java-mem-size=${task.memory.toString().split(" ")[0].toInteger()}G \
   bamqc \
   -bam ${bam} \
   --paint-chromosome-limits \
@@ -307,7 +307,7 @@ process MarkDuplicates {
 
   script:
   """
-  gatk --java-options "${params.markdup_java_options} -Xmx${task.memory.toString().split(" ")[0]}G" \
+  gatk --java-options "${params.markdup_java_options} -Xmx${task.memory.toString().split(" ")[0].toInteger()}G" \
   MarkDuplicates \
   --MAX_RECORDS_IN_RAM 50000 \
   --INPUT ${idSample}.bam \
@@ -370,7 +370,7 @@ process CreateRecalibrationTable {
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
   """
-  gatk --java-options -Xmx${task.memory.toString().split(" ")[0]}g \
+  gatk --java-options -Xmx${task.memory.toString().split(" ")[0].toInteger()}g \
   BaseRecalibrator \
   --input ${bam} \
   --output ${idSample}.recal.table \
@@ -423,7 +423,7 @@ process RecalibrateBam {
 
   script:
   """
-  gatk --java-options -Xmx${task.memory.toString().split(" ")[0]}g \
+  gatk --java-options -Xmx${task.memory.toString().split(" ")[0].toInteger()}g \
   ApplyBQSR \
   -R ${genomeFile} \
   --input ${bam} \
@@ -487,7 +487,7 @@ process RunBamQCrecalibrated {
 
   script:
   """
-  qualimap --java-mem-size=${task.memory.toString().split(" ")[0]}G \
+  qualimap --java-mem-size=${task.memory.toString().split(" ")[0].toInteger()}G \
   bamqc \
   -bam ${bam} \
   --paint-chromosome-limits \
